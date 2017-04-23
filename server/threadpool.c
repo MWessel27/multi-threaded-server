@@ -23,12 +23,12 @@ typedef struct _threadpool_st {
    // you should fill in this structure with whatever you need
    int thread_count; // current thread count
    int queue_count;  // number of threads in queue
+   int shutdown;     // shutdown flag
    pthread_mutex_t   mutex;   // lock
    pthread_cond_t    condvar; // conditional variable for empty
    pthread_t         *threads; // thread pointer in pool
    node_worker_t     *head;   // pointer to head of queue
    node_worker_t     *end;    // pointer to end of queue
-   int shutdown;
 } _threadpool;
 
 void *thread_main(threadpool inpool) {
@@ -140,6 +140,7 @@ void dispatch(threadpool from_me, dispatch_fn dispatch_to_here,
   } else {
     pool->end->next = this;
     pool->end       = this;
+    pthread_cond_signal(&(pool->condvar));
   }
 
   pool->queue_count++;
@@ -164,6 +165,5 @@ void destroy_threadpool(threadpool destroyme) {
   }
 
   free(pool->threads);
-  return;
 }
 
