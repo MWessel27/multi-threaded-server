@@ -11,6 +11,7 @@
 
 #include "threadpool.h"
 
+// struct for node worker
 typedef struct node_worker{
 	void (*function) (void*);
   struct node_worker* next;
@@ -20,7 +21,6 @@ typedef struct node_worker{
 // _threadpool is the internal threadpool structure that is
 // cast to type "threadpool" before it given out to callers
 typedef struct _threadpool_st {
-   // you should fill in this structure with whatever you need
    int thread_count; // current thread count
    int queue_count;  // number of threads in queue
    int shutdown;     // shutdown flag
@@ -38,21 +38,26 @@ void *thread_main(threadpool inpool) {
 
   while(1) {
     pool->queue_count = pool->queue_count;
-    // grab the mutex
+    // lock the mutex
     if (pthread_mutex_lock(&(pool->mutex)) != 0) {
       perror("mutex lock failed (!!):");
       exit(-1);
     }
 
     while((pool->queue_count == 0) && (!pool->shutdown)) {
+      // if pool isn't shutting down and task queue is empty
+      // keep waiting for condition variable
       pthread_cond_wait(&(pool->condvar),&(pool->mutex));
     }
 
     if(pool->shutdown) {
+      // pool is shutting down
+      // release mutex and break
       pthread_mutex_unlock(&(pool->mutex));
       pthread_exit(NULL);
     }
 
+    // dequeue task
     this = pool->head;
     pool->queue_count--;
 
@@ -64,11 +69,17 @@ void *thread_main(threadpool inpool) {
     }
 
     if((pool->queue_count == 0) && (!pool->shutdown)) {
+      // signal again if dequeueing changed either shutdown or queue count
       pthread_cond_signal(&(pool->condvar));
     }
 
+    // release mutex
     pthread_mutex_unlock(&(pool->mutex));
+
+    // do the work of the function with the arguments
     (this->function) (this->arguments);
+
+    // free the node worker
     free(this);
   }
 }
