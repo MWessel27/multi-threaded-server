@@ -25,7 +25,7 @@ typedef struct _threadpool_st {
    int queue_count;  // number of threads in queue
    pthread_mutex_t   mutex;   // lock
    pthread_cond_t    condvar; // conditional variable for empty
-   pthread_t         *threads // thread pointer in pool
+   pthread_t         *threads; // thread pointer in pool
    node_worker_t     *head;   // pointer to head of queue
    node_worker_t     *end;    // pointer to end of queue
    int shutdown;
@@ -39,7 +39,7 @@ void *thread_main(threadpool inpool) {
   while(1) {
     pool->queue_count = pool->queue_count;
     // grab the mutex
-    if (pthread_mutex_lock(&mutex) != 0) {
+    if (pthread_mutex_lock(&(pool->mutex)) != 0) {
       perror("mutex lock failed (!!):");
       exit(-1);
     }
@@ -63,12 +63,12 @@ void *thread_main(threadpool inpool) {
       pool->head = this->next;
     }
 
-    if(pool->queue_count == 0) && (!pool->shutdown) {
+    if((pool->queue_count == 0) && (!pool->shutdown)) {
       pthread_cond_signal(&(pool->condvar));
     }
 
     pthread_mutex_unlock(&(pool->mutex));
-    (this->function) (cur->arguments);
+    (this->function) (this->arguments);
     free(this);
   }
 }
@@ -104,8 +104,9 @@ threadpool create_threadpool(int num_threads_in_pool) {
   pthread_cond_init(&(pool->condvar), NULL);
 
   // create threads
-  for(int i=0;i<num_threads_in_pool;i++){
-    if(pthread_create(&(pool->threads[i]),NULL,do_work,pool) != 0){
+  int i;
+  for(i=0;i<num_threads_in_pool;i++){
+    if(pthread_create(&(pool->threads[i]),NULL,thread_main,pool) != 0){
       perror("Thread creation failed:");
       exit(-1);
     }
@@ -123,7 +124,7 @@ void dispatch(threadpool from_me, dispatch_fn dispatch_to_here,
   this = (node_worker_t*)malloc(sizeof(node_worker_t));
   if(this == NULL){
     fprintf(stderr, "Out of memory creating threadpool threads!\n");
-    return NULL;
+    exit(-1);
   }
 
   this->function   = dispatch_to_here;
@@ -149,7 +150,7 @@ void destroy_threadpool(threadpool destroyme) {
   _threadpool *pool = (_threadpool *) destroyme;
 
   // add your code here to kill a threadpool
-  if (pthread_mutex_lock(&mutex) != 0) {
+  if (pthread_mutex_lock(&(pool->mutex)) != 0) {
     perror("mutex lock failed (!!):");
     exit(-1);
   }
@@ -157,6 +158,7 @@ void destroy_threadpool(threadpool destroyme) {
   pool->shutdown = 1;
   pthread_cond_broadcast(&(pool->condvar));
   pthread_mutex_unlock(&(pool->mutex));
+  int i;
   for(i = 0; i < pool->thread_count; i++) {
     pthread_join(pool->threads[i], NULL);
   }
