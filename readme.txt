@@ -1,16 +1,5 @@
-# Multithreaded Server
-# Description
-A Multi-Thread Server with a Thread Pool.
-
-# Part 1: Getting Started
-1. Clone this repo
-2. scp the executed files to linprog
-    - `scp -r server 'username'@linprog.cs.fsu.edu:/home/majors/'username'/'project directory'`
-3. ssh into linprog and navigate to /'project directory'/server
-4. Run `make`
-
-# Questions
-# A verbal description of the structure of your threadpool implementation, including a list of any design decisions you made.
+• A verbal description of the structure of your threadpool implementation, including a
+list of any design decisions you made.
 
 Starting with the threadpool structure, it is composed of a thread count, a queue count
 to hold the number of threads in the queue, a shutdown flag, a mutex, conditional variable,
@@ -44,7 +33,7 @@ is set, release the mutex and break. Then dequeue the task, update the linked li
 release the mutex, do the work of the function and pass in the arguments, then free
 resources of threadpool.
 
-# A list of critical sections inside your threadpool code (and why they are critical sections).
+• A list of critical sections inside your threadpool code (and why they are critical sections).
 
 The critical sections inside my threadpool code is between when I lock the mutex, and then
 release the mutex. This happens in thread_main, dispatch, and destroy_threadpool. The reason
@@ -55,7 +44,9 @@ and threadpool, that nothing interrupts our commands so that we do not switch co
 continue on another process yielding back inconsistent results and possibly breaking the 
 program completely.
 
-# A description of the synchronization inside your threadpool. What condition variables did you need, where, and why? Under what conditions do threads block, and which threadis responsible for waking up a blocked thread?
+• A description of the synchronization inside your threadpool. What condition variables
+did you need, where, and why? Under what conditions do threads block, and which thread
+is responsible for waking up a blocked thread?
 
 Dispatch handles the main synchronization inside my threadpool, and thread_main also does
 a little as well. In dispatch, if there are no available threads in the pool because they
