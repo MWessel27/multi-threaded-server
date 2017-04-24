@@ -2,6 +2,10 @@
  * threadpool.c
  *
  * This file will contain your implementation of a threadpool.
+ *
+ * Name: Mikalangelo Wessel
+ * Class: COP4610
+ * Assignment 5
  */
 
 #include <stdio.h>
@@ -61,6 +65,7 @@ void *thread_main(threadpool inpool) {
     this = pool->head;
     pool->queue_count--;
 
+    // update linked list to have correct head and end
     if(!pool->queue_count) {
       pool->head = NULL;
       pool->end = NULL;
@@ -132,6 +137,8 @@ void dispatch(threadpool from_me, dispatch_fn dispatch_to_here,
   node_worker_t *this;
 
   // add your code here to dispatch a thread
+
+  // allocate a node worker
   this = (node_worker_t*)malloc(sizeof(node_worker_t));
   if(this == NULL){
     fprintf(stderr, "Out of memory creating threadpool threads!\n");
@@ -142,19 +149,28 @@ void dispatch(threadpool from_me, dispatch_fn dispatch_to_here,
   this->arguments = arg;
   this->next      = NULL;
 
+  // lock the mutex
   pthread_mutex_lock(&(pool->mutex));
 
+  // add node to queue and update previous node to have next in linked list
   if(pool->queue_count == 0) {
+    // if queue count is 0, set head and end to this
     pool->head = this;
     pool->end  = this;
+    // signal conditional variable
     pthread_cond_signal(&(pool->condvar));
   } else {
+    // if queue is not empty, set last in queue to have next as this
     pool->end->next = this;
+    // update end to this
     pool->end       = this;
+    // signal conditional variable
     pthread_cond_signal(&(pool->condvar));
   }
 
+  // add 1 to queue count
   pool->queue_count++;
+  // release mutex
   pthread_mutex_unlock(&(pool->mutex));
 }
 
@@ -162,19 +178,24 @@ void destroy_threadpool(threadpool destroyme) {
   _threadpool *pool = (_threadpool *) destroyme;
 
   // add your code here to kill a threadpool
+  // lock the mutex
   if (pthread_mutex_lock(&(pool->mutex)) != 0) {
     perror("mutex lock failed (!!):");
     exit(-1);
   }
-
+  // set the shutdown flag
   pool->shutdown = 1;
+  // broadcast and wake up all threads
   pthread_cond_broadcast(&(pool->condvar));
+  // release the mutex
   pthread_mutex_unlock(&(pool->mutex));
   int i;
+  // join all the threads and wait till they exit
   for(i = 0; i < pool->thread_count; i++) {
     pthread_join(pool->threads[i], NULL);
   }
 
+  // free threadpool resources
   free(pool->threads);
 }
 
